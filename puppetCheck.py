@@ -1,8 +1,11 @@
 #!/usr/bin/python
 
 #Script which runs as plugin in checkmk.
+#Written by Steven Wend
+#steven.wend [at]{1} t-online.de
 
 #This script ist tested with Python 2.7
+
 
 import apt
 import sys
