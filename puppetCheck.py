@@ -2,10 +2,9 @@
 
 #Script which runs as plugin in checkmk.
 #Written by Steven Wend
-#steven.wend [at]{1} t-online.de
+#steven.wend [a~t] t-online.de
 
-#This script ist tested with Python 2.7
-
+#This script is tested with Python 2.7
 
 import apt
 import sys
@@ -41,11 +40,11 @@ def runAllTests():
 		neededTime = getNeededTimeForLastRun()
 	except Exception, arg:
 		sendToSyslog("[{err}]".format(err=str(arg)))
-		sendMessage("2 Puppet_Agent sec=0 CRITICAL An exception has been thrown.")
+		sendMessage("2 Puppet_Agent sec=0 An exception has been thrown.")
 		sys.exit()
 
 	#No one has terminated so everything should be fine.
-	sendMessage("0 Puppet_Agent sec=" + neededTime + " OK Puppet Agent is working.")
+	sendMessage("0 Puppet_Agent sec=" + neededTime + " Puppet Agent is working.")
 	sys.exit()
 
 
@@ -78,7 +77,7 @@ def setPuppetPathsAndCheckInstallation():
 		puppetBinPath = "/usr/bin/"
 	else:
 		#print "Nothing is installed"
-		sendMessage("2 Puppet_Agent sec=0 CRITICAL Puppet Agent is not installed.")
+		sendMessage("2 Puppet_Agent sec=0 Puppet Agent is not installed.")
 		sys.exit()
 
 
@@ -90,7 +89,7 @@ def checkPuppetAgentIsRunning():
 
 	if re.search("puppet agent", output) is None:
 		print "Puppet Agent is not running."
-		sendMessage("2 Puppet_Agent sec=0 CRITICAL Puppet Agent is not running.")
+		sendMessage("2 Puppet_Agent sec=0 Puppet Agent is not running.")
 		sys.exit()
 
 
@@ -114,10 +113,10 @@ def checkTimingLastRun():
 	duration = int(currentTimestamp) - int(lastRunTimestamp)
 	
 	if duration > 3600 and duration < 86400:
-		sendMessage("1 Puppet_Agent sec=0 WARNING Puppet Agent was not running since 1h.")
+		sendMessage("1 Puppet_Agent sec=0 Puppet Agent was not running since 1h.")
 		sys.exit()
 	elif duration > 86400:
-		sendMessage("2 Puppet_Agent sec=0 CRITICAL Puppet Agent was not running since 24h.")
+		sendMessage("2 Puppet_Agent sec=0 Puppet Agent was not running since 24h.")
 		sys.exit()
 
 
@@ -132,7 +131,7 @@ def checkForErrorsInLastRun():
 			errorCounter = line[1]
 
 	if int(errorCounter) > 0:
-		sendMessage("2 Puppet_Agent sec=0 CRITICAL Puppet Agent ran with errors.")
+		sendMessage("2 Puppet_Agent sec=0 Puppet Agent ran with errors.")
 		sys.exit()
 
 
