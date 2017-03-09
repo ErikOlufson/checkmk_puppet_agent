@@ -19,9 +19,21 @@ import syslog
 puppetStatePath = None
 puppetBinPath = None
 
+neededTime = "0"
+stateYamlSize = "0"
+
+def sendSuccessMessage(message):
+	sendMessage("0 Puppet_Agent sec=" + neededTime +"|kb=" + stateYamlSize + " " + message)
+
+def sendCritMessage(message):
+	sendMessage("2 Puppet_Agent sec=" + neededTime +"|kb=" + stateYamlSize + " " + message)
+
+def sendWarnMessage(message):
+	sendMessage("1 Puppet_Agent sec=" + neededTime +"|kb=" + stateYamlSize + " " + message)
 
 def sendMessage(message):
 	print "%s" % message
+	sys.exit()
 
 
 def sendToSyslog(message):
@@ -29,23 +41,25 @@ def sendToSyslog(message):
 
 
 def runAllTests():
-	neededTime = None
+	global neededTime
+	global stateYamlSize
 
 	#If anything does not work probably we need to know.
 	try:
 		setPuppetPathsAndCheckInstallation()
+		neededTime = getNeededTimeForLastRun()
+		stateYamlSize = str(getStateYamlSize())
+
 		checkPuppetAgentIsRunning()
 		checkTimingLastRun()
 		checkForErrorsInLastRun()
-		neededTime = getNeededTimeForLastRun()
+		checkForBigStateYaml()
 	except Exception, arg:
 		sendToSyslog("[{err}]".format(err=str(arg)))
-		sendMessage("2 Puppet_Agent sec=0 An exception has been thrown.")
-		sys.exit()
+		sendCritMessage("An exception has been thrown.")
 
 	#No one has terminated so everything should be fine.
-	sendMessage("0 Puppet_Agent sec=" + neededTime + " Puppet Agent is working.")
-	sys.exit()
+	sendSuccessMessage("Puppet Agent is working.")
 
 
 def setPuppetPathsAndCheckInstallation():
@@ -77,8 +91,7 @@ def setPuppetPathsAndCheckInstallation():
 		puppetBinPath = "/usr/bin/"
 	else:
 		#print "Nothing is installed"
-		sendMessage("2 Puppet_Agent sec=0 Puppet Agent is not installed.")
-		sys.exit()
+		sendCritMessage("Puppet Agent is not installed.")
 
 
 def checkPuppetAgentIsRunning():
@@ -88,13 +101,11 @@ def checkPuppetAgentIsRunning():
 	ps.wait()
 
 	if re.search("puppet agent", output) is None:
-		print "Puppet Agent is not running."
-		sendMessage("2 Puppet_Agent sec=0 Puppet Agent is not running.")
-		sys.exit()
+		#print "Puppet Agent is not running."
+		sendCritMessage("Puppet Agent is not running.")
 
 
 def checkTimingLastRun():
-	global neededTime
 
 	file = open(puppetStatePath+"/last_run_summary.yaml", "r")
 
@@ -113,11 +124,9 @@ def checkTimingLastRun():
 	duration = int(currentTimestamp) - int(lastRunTimestamp)
 	
 	if duration > 3600 and duration < 86400:
-		sendMessage("1 Puppet_Agent sec=0 Puppet Agent was not running since 1h.")
-		sys.exit()
+		sendWarnMessage("Puppet Agent was not running since 1h.")
 	elif duration > 86400:
-		sendMessage("2 Puppet_Agent sec=0 Puppet Agent was not running since 24h.")
-		sys.exit()
+		sendCritMessage("Puppet Agent was not running since 24h.")
 
 
 def checkForErrorsInLastRun():
@@ -131,8 +140,20 @@ def checkForErrorsInLastRun():
 			errorCounter = line[1]
 
 	if int(errorCounter) > 0:
-		sendMessage("2 Puppet_Agent sec=0 Puppet Agent ran with errors.")
-		sys.exit()
+		sendCritMessage("Puppet Agent ran with errors.")
+
+
+def getStateYamlSize():
+	stateYamlSize = os.path.getsize(puppetStatePath+"/state.yaml")
+	return ( stateYamlSize / 1024 )
+
+
+def checkForBigStateYaml():
+	stateYamlSizeInKb = getStateYamlSize()
+	if stateYamlSizeInKb > 5120 and stateYamlSizeInKb < 10240:
+		sendWarnMessage("Puppet Agent state.yaml is big (" + str(stateYamlSizeInKb) + "kb).")
+	elif getStateYamlSize() > 10240:
+		sendCritMessage("Puppet Agent state.yaml is too big (" + str(stateYamlSizeInKb) + "kb).")
 
 
 def getNeededTimeForLastRun():
@@ -143,5 +164,6 @@ def getNeededTimeForLastRun():
 			neededTime = time[1].split(".",1)
 
 	return neededTime[0]
+
 
 runAllTests()
